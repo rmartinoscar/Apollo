@@ -1,0 +1,7 @@
+C:/Users/MartinOscar/Documents/Apollo/UILD_SHARED_LIBS=OFF/CMakeFiles/minhook.dir
+C:/Users/MartinOscar/Documents/Apollo/UILD_SHARED_LIBS=OFF/CMakeFiles/edit_cache.dir
+C:/Users/MartinOscar/Documents/Apollo/UILD_SHARED_LIBS=OFF/CMakeFiles/rebuild_cache.dir
+C:/Users/MartinOscar/Documents/Apollo/UILD_SHARED_LIBS=OFF/CMakeFiles/list_install_components.dir
+C:/Users/MartinOscar/Documents/Apollo/UILD_SHARED_LIBS=OFF/CMakeFiles/install.dir
+C:/Users/MartinOscar/Documents/Apollo/UILD_SHARED_LIBS=OFF/CMakeFiles/install/local.dir
+C:/Users/MartinOscar/Documents/Apollo/UILD_SHARED_LIBS=OFF/CMakeFiles/install/strip.dir

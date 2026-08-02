@@ -36,9 +36,11 @@
 
 # VSCode IDE
 .vscode/
+.vs
 
 # build directories
 build/
+builds/
 cmake-*/
 docs/doxyconfig*
 
