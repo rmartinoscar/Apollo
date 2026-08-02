@@ -36,6 +36,8 @@
   // standard includes
   #include <csignal>
   #include <string>
+  #include <memory>
+  #include <vector>
 
   // lib includes
   #include <boost/filesystem.hpp>
@@ -58,6 +60,10 @@ using namespace std::literals;
 namespace system_tray {
   static std::atomic<bool> tray_initialized = false;
 
+  // storage for dynamic server commands submenu
+  static std::vector<std::string> server_cmd_names;
+  static std::unique_ptr<struct tray_menu[]> server_cmd_submenu;
+
   void tray_open_ui_cb(struct tray_menu *item) {
     BOOST_LOG(info) << "Opening UI from system tray"sv;
     launch_ui();
@@ -67,6 +73,42 @@ namespace system_tray {
   tray_force_stop_cb(struct tray_menu *item) {
     BOOST_LOG(info) << "Force stop from system tray"sv;
     proc::proc.terminate();
+  }
+
+  // Execute a configured server command when clicked from the tray.
+  void tray_server_cmd_cb(struct tray_menu *item) {
+    if (!item || !item->text) {
+      return;
+    }
+
+    std::string clicked_name = item->text;
+    	  // Find matching server command by name (fall back to cmd_val when name empty).
+    for (auto &sc : config::sunshine.server_cmds) {
+      const std::string &name = sc.cmd_name.empty() ? sc.cmd_val : sc.cmd_name;
+      if (name == clicked_name) {
+        BOOST_LOG(info) << "Running server command from tray: " << name;
+
+        std::thread exec_thread([cmd = sc.cmd_val, elevated = sc.elevated]() {
+          std::error_code ec;
+          boost::filesystem::path working_dir = boost::filesystem::current_path();
+          auto env = proc::proc.get_env();
+          auto child = platf::run_command(elevated, true, cmd, working_dir, env, nullptr, ec, nullptr);
+          if (ec) {
+            BOOST_LOG(error) << "Failed to run server command [" << cmd << "]: " << ec.message();
+            return;
+          }
+          try {
+            child.detach();
+          } catch (...) {
+            // ignore detach errors
+          }
+        });
+        exec_thread.detach();
+        return;
+      }
+    }
+
+    BOOST_LOG(warning) << "Tray: couldn't find server command matching [" << clicked_name << "]";
   }
 
   void tray_reset_display_device_config_cb(struct tray_menu *item) {
@@ -119,7 +161,9 @@ namespace system_tray {
         //       { .text = nullptr } } },
         // { .text = "-" },
         { .text = TRAY_MSG_NO_APP_RUNNING, .cb = tray_force_stop_cb },
-  // Currently display device settings are only supported on Windows
+        { .text = "-" },
+        { .text = "Server Commands", .submenu = nullptr },
+        { .text = "-" },
   #ifdef _WIN32
         {.text = "Reset Display Device Config", .cb = tray_reset_display_device_config_cb},
   #endif
@@ -233,6 +277,27 @@ namespace system_tray {
 
     if (config::sunshine.hide_tray_controls) {
       tray.menu[1].text = nullptr;
+    } else {
+      // populate server commands submenu
+      size_t cmd_count = config::sunshine.server_cmds.size();
+      server_cmd_names.reserve(cmd_count);
+      server_cmd_submenu = std::unique_ptr<struct tray_menu[]>(new struct tray_menu[cmd_count + 1]);
+
+      for (size_t i = 0; i < cmd_count; ++i) {
+        const auto &sc = config::sunshine.server_cmds[i];
+        auto &menu_item = server_cmd_submenu[i];
+
+        menu_item.text = sc.cmd_name.empty() ? sc.cmd_val.c_str() : sc.cmd_name.c_str();
+        menu_item.cb = tray_server_cmd_cb;
+        menu_item.submenu = nullptr;
+
+        // keep server command names for tray_server_cmd_cb
+        server_cmd_names.emplace_back(menu_item.text);
+      }
+
+      // mark end of submenu
+      server_cmd_submenu[cmd_count].text = nullptr;
+      tray.menu[4].submenu = server_cmd_submenu.get();
     }
 
     std::thread tray_thread(system_tray);
