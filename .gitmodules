@@ -68,4 +68,5 @@
 	branch = master
 [submodule "third-party/minhook"]
 	path = third-party/minhook
-	url = https://github.com/TsudaKageyu/minhook.git
+	url = https://github.com/rmartinoscar/minhook.git
+	branch = patch
